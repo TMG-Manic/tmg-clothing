@@ -27,7 +27,7 @@ TMGClothing.ResetItemTexture = function(obj, category) {
     var defaultTextureValue = clothingCategorys[category].defaultTexture;
     $(itemTexture).val(defaultTextureValue);
 
-    $.post('https://tmg-clothing/updateSkin', JSON.stringify({
+    $.post(`https://${GetParentResourceName()}/updateSkin`, JSON.stringify({
         clothingType: category,
         articleNumber: defaultTextureValue,
         type: "texture",
@@ -45,19 +45,19 @@ $(document).on('click', '.clothing-menu-option-item-right', function(e) {
 
     if (canChange) {
         if (hasTracker && clothingCategory == "accessory") {
-            $.post('https://tmg-clothing/TrackerError');
+            $.post(`https://${GetParentResourceName()}/TrackerError`);
             return
         } else {
             if (clothingCategory == "model") {
                 $(inputElem).val(newValue);
-                $.post('https://tmg-clothing/setCurrentPed', JSON.stringify({ ped: newValue }), function(model) {
+                $.post(`https://${GetParentResourceName()}/setCurrentPed`, JSON.stringify({ ped: newValue }), function(model) {
                     $("#current-model").html("<p>" + model + "</p>")
                 });
                 canChange = true;
                 TMGClothing.ResetValues()
             } else if (clothingCategory == "hair") {
                 $(inputElem).val(newValue);
-                $.post('https://tmg-clothing/updateSkin', JSON.stringify({
+                $.post(`https://${GetParentResourceName()}/updateSkin`, JSON.stringify({
                     clothingType: clothingCategory,
                     articleNumber: newValue,
                     type: buttonType,
@@ -70,7 +70,7 @@ $(document).on('click', '.clothing-menu-option-item-right', function(e) {
                     var buttonMax = $(this).parent().find('[data-headertype="item-header"]').data('maxItem');
                     if (clothingCategory == "accessory" && newValue == 13) {
                         $(inputElem).val(14);
-                        $.post('https://tmg-clothing/updateSkin', JSON.stringify({
+                        $.post(`https://${GetParentResourceName()}/updateSkin`, JSON.stringify({
                             clothingType: clothingCategory,
                             articleNumber: 14,
                             type: buttonType,
@@ -78,7 +78,7 @@ $(document).on('click', '.clothing-menu-option-item-right', function(e) {
                     } else {
                         if (newValue <= parseInt(buttonMax)) {
                             $(inputElem).val(newValue);
-                            $.post('https://tmg-clothing/updateSkin', JSON.stringify({
+                            $.post(`https://${GetParentResourceName()}/updateSkin`, JSON.stringify({
                                 clothingType: clothingCategory,
                                 articleNumber: newValue,
                                 type: buttonType,
@@ -90,7 +90,7 @@ $(document).on('click', '.clothing-menu-option-item-right', function(e) {
                     var buttonMax = $(this).parent().find('[data-headertype="texture-header"]').data('maxTexture');
                     if (newValue <= parseInt(buttonMax)) {
                         $(inputElem).val(newValue);
-                        $.post('https://tmg-clothing/updateSkin', JSON.stringify({
+                        $.post(`https://${GetParentResourceName()}/updateSkin`, JSON.stringify({
                             clothingType: clothingCategory,
                             articleNumber: newValue,
                             type: buttonType,
@@ -113,13 +113,13 @@ $(document).on('click', '.clothing-menu-option-item-left', function(e) {
 
     if (canChange) {
         if (hasTracker && clothingCategory == "accessory") {
-            $.post('https://tmg-clothing/TrackerError');
+            $.post(`https://${GetParentResourceName()}/TrackerError`);
             return
         } else {
             if (clothingCategory == "model") {
                 if (newValue != 0) {
                     $(inputElem).val(newValue);
-                    $.post('https://tmg-clothing/setCurrentPed', JSON.stringify({ ped: newValue }), function(model) {
+                    $.post(`https://${GetParentResourceName()}/setCurrentPed`, JSON.stringify({ ped: newValue }), function(model) {
                         $("#current-model").html("<p>" + model + "</p>")
                     });
                     canChange = true;
@@ -130,14 +130,14 @@ $(document).on('click', '.clothing-menu-option-item-left', function(e) {
                     if (newValue >= clothingCategorys[clothingCategory].defaultItem) {
                         if (clothingCategory == "accessory" && newValue == 13) {
                             $(inputElem).val(12);
-                            $.post('https://tmg-clothing/updateSkin', JSON.stringify({
+                            $.post(`https://${GetParentResourceName()}/updateSkin`, JSON.stringify({
                                 clothingType: clothingCategory,
                                 articleNumber: 12,
                                 type: buttonType,
                             }));
                         } else {
                             $(inputElem).val(newValue);
-                            $.post('https://tmg-clothing/updateSkin', JSON.stringify({
+                            $.post(`https://${GetParentResourceName()}/updateSkin`, JSON.stringify({
                                 clothingType: clothingCategory,
                                 articleNumber: newValue,
                                 type: buttonType,
@@ -149,14 +149,14 @@ $(document).on('click', '.clothing-menu-option-item-left', function(e) {
                     if (newValue >= clothingCategorys[clothingCategory].defaultTexture) {
                         if (clothingCategory == "accessory" && newValue == 13) {
                             $(inputElem).val(12);
-                            $.post('https://tmg-clothing/updateSkin', JSON.stringify({
+                            $.post(`https://${GetParentResourceName()}/updateSkin`, JSON.stringify({
                                 clothingType: clothingCategory,
                                 articleNumber: 12,
                                 type: buttonType,
                             }));
                         } else {
                             $(inputElem).val(newValue);
-                            $.post('https://tmg-clothing/updateSkin', JSON.stringify({
+                            $.post(`https://${GetParentResourceName()}/updateSkin`, JSON.stringify({
                                 clothingType: clothingCategory,
                                 articleNumber: newValue,
                                 type: buttonType,
@@ -179,13 +179,13 @@ $(document).on('input', '.clothing-menu-option-item-slider', function(e) {
 
     if (canChange) {
         if (hasTracker && clothingCategory == "accessory") {
-            $.post('https://tmg-clothing/TrackerError');
+            $.post(`https://${GetParentResourceName()}/TrackerError`);
             return
         } else {
             if (clothingCategory == "model") {
                 if (newValue != 0) {
                     $(inputElem).val(newValue);
-                    $.post('https://tmg-clothing/setCurrentPed', JSON.stringify({ ped: newValue }), function(model) {
+                    $.post(`https://${GetParentResourceName()}/setCurrentPed`, JSON.stringify({ ped: newValue }), function(model) {
                         $("#current-model").html("<p>" + model + "</p>")
                     });
                     canChange = true;
@@ -196,14 +196,14 @@ $(document).on('input', '.clothing-menu-option-item-slider', function(e) {
                     if (newValue >= clothingCategorys[clothingCategory].defaultItem) {
                         if (clothingCategory == "accessory" && newValue == 13) {
                             $(inputElem).val(12);
-                            $.post('https://tmg-clothing/updateSkin', JSON.stringify({
+                            $.post(`https://${GetParentResourceName()}/updateSkin`, JSON.stringify({
                                 clothingType: clothingCategory,
                                 articleNumber: 12,
                                 type: buttonType,
                             }));
                         } else {
                             $(inputElem).val(newValue);
-                            $.post('https://tmg-clothing/updateSkin', JSON.stringify({
+                            $.post(`https://${GetParentResourceName()}/updateSkin`, JSON.stringify({
                                 clothingType: clothingCategory,
                                 articleNumber: newValue,
                                 type: buttonType,
@@ -215,14 +215,14 @@ $(document).on('input', '.clothing-menu-option-item-slider', function(e) {
                     if (newValue >= clothingCategorys[clothingCategory].defaultTexture) {
                         if (clothingCategory == "accessory" && newValue == 13) {
                             $(inputElem).val(12);
-                            $.post('https://tmg-clothing/updateSkin', JSON.stringify({
+                            $.post(`https://${GetParentResourceName()}/updateSkin`, JSON.stringify({
                                 clothingType: clothingCategory,
                                 articleNumber: 12,
                                 type: buttonType,
                             }));
                         } else {
                             $(inputElem).val(newValue);
-                            $.post('https://tmg-clothing/updateSkin', JSON.stringify({
+                            $.post(`https://${GetParentResourceName()}/updateSkin`, JSON.stringify({
                                 clothingType: clothingCategory,
                                 articleNumber: newValue,
                                 type: buttonType,
@@ -266,7 +266,7 @@ $(document).on('change', '.item-number', function() {
     changingCat = this;
 
     if (hasTracker && clothingCategory == "accessory") {
-        $.post('https://tmg-clothing/TrackerError');
+        $.post(`https://${GetParentResourceName()}/TrackerError`);
         $(this).val(13);
         return
     } else {
@@ -274,7 +274,7 @@ $(document).on('change', '.item-number', function() {
             $(this).val(12);
             return
         } else {
-            $.post('https://tmg-clothing/updateSkinOnInput', JSON.stringify({
+            $.post(`https://${GetParentResourceName()}/updateSkinOnInput`, JSON.stringify({
                 clothingType: clothingCategory,
                 articleNumber: parseFloat(inputVal),
                 type: buttonType,
@@ -290,14 +290,14 @@ $(document).on('click', '.clothing-menu-header-camera-btn', function(e) {
 
     if (selectedCam == null) {
         $(this).addClass("selected-cam");
-        $.post('https://tmg-clothing/setupCam', JSON.stringify({
+        $.post(`https://${GetParentResourceName()}/setupCam`, JSON.stringify({
             value: camValue
         }));
         selectedCam = this;
     } else {
         if (selectedCam == this) {
             $(selectedCam).removeClass("selected-cam");
-            $.post('https://tmg-clothing/setupCam', JSON.stringify({
+            $.post(`https://${GetParentResourceName()}/setupCam`, JSON.stringify({
                 value: 0
             }));
 
@@ -305,7 +305,7 @@ $(document).on('click', '.clothing-menu-header-camera-btn', function(e) {
         } else {
             $(selectedCam).removeClass("selected-cam");
             $(this).addClass("selected-cam");
-            $.post('https://tmg-clothing/setupCam', JSON.stringify({
+            $.post(`https://${GetParentResourceName()}/setupCam`, JSON.stringify({
                 value: camValue
             }));
 
@@ -314,13 +314,13 @@ $(document).on('click', '.clothing-menu-header-camera-btn', function(e) {
     }
 });
 
-$(document).on('keydown', function() {
+$(document).on('keydown', function(event) {
     switch (event.keyCode) {
         case 68: // D
-            $.post('https://tmg-clothing/rotateRight');
+            $.post(`https://${GetParentResourceName()}/rotateRight`);
             break;
         case 65: // A
-            $.post('https://tmg-clothing/rotateLeft');
+            $.post(`https://${GetParentResourceName()}/rotateLeft`);
             break;
         case 38: // UP
             ChangeUp();
@@ -377,20 +377,20 @@ TMGClothing.ReloadOutfits = function(outfits) {
 $(document).on('click', "#save-menu", function(e) {
     e.preventDefault();
     TMGClothing.Close();
-    $.post('https://tmg-clothing/saveClothing');
+    $.post(`https://${GetParentResourceName()}/saveClothing`);
 });
 
 $(document).on('click', "#cancel-menu", function(e) {
     e.preventDefault();
     TMGClothing.Close();
-    $.post('https://tmg-clothing/resetOutfit');
+    $.post(`https://${GetParentResourceName()}/resetOutfit`);
 });
 
 TMGClothing.SetCurrentValues = function(clothingValues) {
     $.each(clothingValues, function(i, item) {
         var itemCats = $(".clothing-menu-container").find('[data-type="' + i + '"]');
 
-        if (i == "facemix") { //Added for special case with range sliders
+        if (i == "facemix") { 
             $('#shapeMix').val(item.shapeMix);
             $('#skinMix').val(item.skinMix);
         } else {
@@ -477,7 +477,7 @@ $(document).on('click', '.clothing-menu-outfit-option-button', function(e) {
 
     var oData = $(this).parent().data('outfitData');
 
-    $.post('https://tmg-clothing/selectOutfit', JSON.stringify({
+    $.post(`https://${GetParentResourceName()}/selectOutfit`, JSON.stringify({
         outfitData: oData.outfitData,
         outfitName: oData.outfitLabel
     }))
@@ -488,7 +488,7 @@ $(document).on('click', '.clothing-menu-myOutfit-option-button', function(e) {
 
     var outfitData = $(this).parent().data('myOutfitData');
 
-    $.post('https://tmg-clothing/selectOutfit', JSON.stringify({
+    $.post(`https://${GetParentResourceName()}/selectOutfit`, JSON.stringify({
         outfitData: outfitData.skin,
         outfitName: outfitData.outfitname,
         outfitId: outfitData.outfitId,
@@ -500,7 +500,7 @@ $(document).on('click', '.clothing-menu-myOutfit-option-button-remove', function
 
     var outfitData = $(this).parent().data('myOutfitData');
 
-    $.post('https://tmg-clothing/removeOutfit', JSON.stringify({
+    $.post(`https://${GetParentResourceName()}/removeOutfit`, JSON.stringify({
         outfitData: outfitData.skin,
         outfitName: outfitData.outfitname,
         outfitId: outfitData.outfitId,
@@ -508,7 +508,7 @@ $(document).on('click', '.clothing-menu-myOutfit-option-button-remove', function
 });
 
 TMGClothing.Close = function() {
-    $.post('https://tmg-clothing/close');
+    $.post(`https://${GetParentResourceName()}/close`);
     $(".change-camera-buttons").fadeOut(150);
     $(".clothing-menu-roomOutfits-container").css("display", "none");
     $(".clothing-menu-myOutfits-container").css("display", "none");
@@ -629,7 +629,7 @@ $(document).on('click', '#save-outfit-save', function(e) {
     $(".clothing-menu-container").css({ "display": "block" }).animate({ right: 0, }, 200);
     $(".clothing-menu-save-outfit-name").fadeOut(150);
 
-    $.post('https://tmg-clothing/saveOutfit', JSON.stringify({
+    $.post(`https://${GetParentResourceName()}/saveOutfit`, JSON.stringify({
         outfitName: $("#outfit-name").val()
     }));
 });
@@ -646,7 +646,7 @@ $(document).on('click', '.change-camera-button', function(e) {
 
     var rotationType = $(this).data('rotation');
 
-    $.post('https://tmg-clothing/rotateCam', JSON.stringify({
+    $.post(`https://${GetParentResourceName()}/rotateCam`, JSON.stringify({
         type: rotationType
     }))
 });
@@ -661,5 +661,3 @@ function translate() {
         obj.text(translatePhrase(item, obj.text()));
     }
 }
-
-// TMGClothing.Open()

@@ -28,6 +28,7 @@ client_scripts {
 files {
     'html/index.html',
     'html/style.css',
+    'html/jquery-3.6.0.min.js',
     'html/reset.css',
     'html/script.js'
 }
