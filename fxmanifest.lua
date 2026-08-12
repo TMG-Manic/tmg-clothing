@@ -26,9 +26,9 @@ client_scripts {
 }
 
 files {
-    'html/index.html',
-    'html/style.css',
-    'html/jquery-3.6.0.min.js',
-    'html/reset.css',
-    'html/script.js'
+    -- html/ is Vite build output (ui/apps/tmg-clothing). Globbed because the bundle
+    -- ships self-hosted webfonts, and FiveM silently 404s undeclared files.
+    'html/**'
 }
+
+dependency 'tmg-core'

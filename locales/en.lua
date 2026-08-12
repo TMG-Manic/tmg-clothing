@@ -1,3 +1,4 @@
+-- English translation strings for tmg-clothing; the default Lang and fallback for other locales.
 local Translations = {
     store = {
         barber = "Barbershop",

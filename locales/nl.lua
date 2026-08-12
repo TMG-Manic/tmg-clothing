@@ -1,3 +1,4 @@
+-- Dutch translation strings for tmg-clothing; registered as the active Lang when qb_locale is 'nl'.
 local Translations = {
     store = {
         barber = "Coiffure",

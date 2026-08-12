@@ -1,3 +1,4 @@
+-- Spanish translation strings for tmg-clothing; registered as the active Lang when qb_locale is 'es'.
 local Translations = {
     store = {
         barber = "Peluquería",

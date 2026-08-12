@@ -10,6 +10,8 @@ local previousSkinData = {}
 local zoneName = nil
 local inZone = false
 local removeWear = false
+-- Live appearance state: current item/texture per slot plus the defaults used when resetting
+-- or switching ped models. Mutated in place by ChangeVariation and replaced wholesale on skin load.
 local skinData = {
     ["face"] =                 {item = 0,    texture = 0,  defaultItem = 0,      defaultTexture = 0},
     ["face2"] =                {item = 0,    texture = 0,  defaultItem = 0,      defaultTexture = 0},
@@ -59,6 +61,7 @@ local skinData = {
     ["chimp_hole"] =           {item = 0,    texture = 0,  defaultItem = 0,      defaultTexture = 0},
     ["neck_thikness"] =        {item = 0,    texture = 0,  defaultItem = 0,      defaultTexture = 0},
 }
+-- Maps each appearance slot to the native family that drives it and the component/overlay id to pass.
 local clothingCategories = {
     ["arms"] =                 {type = "variation", id = 3},
     ["t-shirt"] =              {type = "variation", id = 8},
@@ -108,6 +111,7 @@ local clothingCategories = {
     ["chimp_hole"] =           {type = "cheek",     id = 4},
     ["neck_thikness"] =        {type = "cheek",     id = 5},
 }
+-- Scratch store for props/components stripped by adjustfacewear, so they can be put back on.
 local faceProps = {
     [1] = { ["Prop"] = -1, ["Texture"] = -1 },
     [2] = { ["Prop"] = -1, ["Texture"] = -1 },
@@ -117,6 +121,8 @@ local faceProps = {
     [6] = { ["Prop"] = -1, ["Palette"] = -1, ["Texture"] = -1 }, -- this is actually a pedtexture variations, not a prop
 }
 -- Functions
+-- Recomputes the upper bound for every slot against the current ped (drawable/texture/overlay counts,
+-- with fixed caps for face and morph sliders) and pushes them to the NUI as 'updateMax'.
 function GetMaxValues()
     local maxModelValues = {
         ["arms"] =                 {type = "clothing",         item = 0,     texture = 0},
@@ -246,6 +252,8 @@ function GetMaxValues()
         maxValues = maxModelValues
     })
 end
+-- Creates and activates the character-preview camera 2m in front of the ped, honouring
+-- customCamLocation when a clothing room supplied one. Resets the orbit heading and offset.
 local function enableCam()
     -- Camera
     local coords = GetOffsetFromEntityInWorldCoords(PlayerPedId(), 0, 2.0, 0)
@@ -267,6 +275,8 @@ local function enableCam()
     headingToCam = GetEntityHeading(PlayerPedId()) + 90
     camOffset = 2.0
 end
+-- Reapplies a full skin table to the player ped, slot by slot. Used to undo unsaved edits.
+-- Props set to -1 or 0 are cleared rather than applied.
 local function resetClothing(data)
     local ped = PlayerPedId()
 
@@ -294,8 +304,11 @@ local function resetClothing(data)
     SetPedHeadOverlayColor(ped, 5, 1, data["blush"].texture, 0)
 
     -- Lipstick
+    -- Fixed:
+    -- the overlay colour was fed .item instead of .texture, so cancelling out of the menu
+    -- recoloured the lipstick with its style index. Every other overlay here passes .texture.
     SetPedHeadOverlay(ped, 8, data["lipstick"].item, 1.0)
-    SetPedHeadOverlayColor(ped, 8, 1, data["lipstick"].item, 0)
+    SetPedHeadOverlayColor(ped, 8, 1, data["lipstick"].texture, 0)
 
     -- Makeup
     SetPedHeadOverlay(ped, 4, data["makeup"].item, 1.0)
@@ -400,6 +413,7 @@ local function resetClothing(data)
 end
 
 
+-- Returns x, y at `dist` from the ped along `head` (degrees). Used to orbit the preview camera.
 local function GetPositionByRelativeHeading(ped, head, dist)
     local pedPos = GetEntityCoords(ped)
 
@@ -408,6 +422,8 @@ local function GetPositionByRelativeHeading(ped, head, dist)
 
     return finPosx, finPosy
 end
+-- Snapshots the current skin for cancel/reset, then opens the NUI with the given menu tabs,
+-- current appearance, tracker flag and translations. Freezes the ped and enables the preview cam.
 local function openMenu(allowedMenus)
     previousSkinData = json.encode(skinData)
     creatingCharacter = true
@@ -415,7 +431,11 @@ local function openMenu(allowedMenus)
     local trackerMeta = PlayerData.metadata["tracker"]
     local translations = {}
     for k in pairs(Lang.fallback and Lang.fallback.phrases or Lang.phrases) do
-        if k:sub(0, ('ui.'):len()) then
+        -- Fixed:
+        -- the prefix test had no comparison, and every Lua string (even "") is truthy, so every
+        -- phrase was pushed to the NUI with its first 3 characters chopped off. The NUI looks
+        -- translations up by the bare key (data-tkey="player_model"), so only 'ui.' keys belong.
+        if k:sub(0, ('ui.'):len()) == 'ui.' then
             translations[k:sub(('ui.'):len() + 1)] = Lang:t(k)
         end
     end
@@ -432,12 +452,16 @@ local function openMenu(allowedMenus)
     FreezeEntityPosition(PlayerPedId(), true)
     enableCam()
 end
+-- Tears down the preview camera and unfreezes the ped.
 local function disableCam()
     RenderScriptCams(false, true, 250, 1, 0)
     DestroyCam(cam, false)
 
     FreezeEntityPosition(PlayerPedId(), false)
 end
+-- Applies a single appearance change from the NUI and records it in skinData.
+-- `data` carries clothingType (slot), type ('item'/'texture'/'skinMix'/'shapeMix') and articleNumber.
+-- Morph sliders are divided by 10 before hitting SetPedFaceFeature. Refreshes max values at the end.
 local function ChangeVariation(data)
     local ped = PlayerPedId()
     local clothingCategory = data.clothingType
@@ -651,7 +675,7 @@ local function ChangeVariation(data)
             local newitem = (item / 10)
             -- print(newitem)
             SetPedFaceFeature(ped, 9, newitem)
-            skinData["cheek_1"].item = item
+            skinData["cheek_2"].item = item
         end
     elseif clothingCategory == "cheek_3" then
         if type == "item" then
@@ -741,7 +765,7 @@ local function ChangeVariation(data)
             local newitem = (item / 10)
             -- print(newitem)
             SetPedFaceFeature(ped, 19, newitem)
-            skinData["chimp_hole"].item = item
+            skinData["neck_thikness"].item = item
         end
     elseif clothingCategory == "t-shirt" then
         if type == "item" then
@@ -825,12 +849,16 @@ local function ChangeVariation(data)
         end
     elseif clothingCategory == "glass" then
         if type == "item" then
+            -- Fixed:
+            -- the skinData write sat inside the `item ~= -1` branch, so clearing the glasses
+            -- never recorded -1 and the old pair came back on save/reload. Now matches the
+            -- hat/ear/watch/bracelet branches.
             if item ~= -1 then
                 SetPedPropIndex(ped, 1, item, skinData["glass"].texture, true)
-                skinData["glass"].item = item
             else
                 ClearPedProp(ped, 1)
             end
+            skinData["glass"].item = item
         elseif type == "texture" then
             SetPedPropIndex(ped, 1, skinData["glass"].item, item, true)
             skinData["glass"].texture = item
@@ -875,6 +903,7 @@ local function ChangeVariation(data)
 
     GetMaxValues()
 end
+-- type() that prefers a metatable's _NAME, so PolyZone/vector userdata report their real class.
 local function typeof(var)
     local _type = type(var);
     if(_type ~= "table" and _type ~= "userdata") then
@@ -887,6 +916,8 @@ local function typeof(var)
         return _type;
     end
 end
+-- Swaps the player's ped model and resets every slot to its default item/texture, without saving.
+-- Non-freemode models keep their baked-in face/hair. Runs asynchronously in its own thread.
 local function ChangeToSkinNoUpdate(skin)
     local model = GetHashKey(skin)
     Citizen.CreateThread(function()
@@ -933,17 +964,21 @@ local function ChangeToSkinNoUpdate(skin)
         end
     end)
 end
+-- Sends the current ped model and JSON-encoded skinData to the server to store as the active skin.
 local function SaveSkin()
     local model = GetEntityModel(PlayerPedId())
     local clothing = json.encode(skinData)
     TriggerServerEvent("tmg-clothing:saveSkin", model, clothing)
 end
+-- Blocks until `dict` is streamed in. No timeout.
 local function loadAnimDict( dict )
     while ( not HasAnimDictLoaded( dict ) ) do
         RequestAnimDict( dict )
         Citizen.Wait( 5 )
     end
 end
+-- Rebuilds the ped from the character's gender, re-requests the saved skin from the server, and
+-- restores max health plus the supplied `health`. Takes ~2s due to the model/skin settle waits.
 local function reloadSkin(health)
     local model
 
@@ -963,18 +998,21 @@ local function reloadSkin(health)
     Citizen.Wait(1000) -- Safety Delay
 
     TriggerServerEvent("tmg-clothes:loadPlayerSkin") -- LOADING PLAYER'S CLOTHES
-    TriggerServerEvent("tmg-clothing:loadPlayerSkin") -- LOADING PLAYER'S CLOTHES - Event 2
 
     SetPedMaxHealth(PlayerId(), maxhealth)
     Citizen.Wait(1000) -- Safety Delay
     SetEntityHealth(PlayerPedId(), health)
 end
 -- Exports
+-- Export: rebuild the local ped from the saved skin, preserving the given health value.
 exports('reloadSkin', reloadSkin)
 
+-- Export: true while the appearance menu is open, so other resources can suppress input.
 exports('IsCreatingCharacter', function()
     return creatingCharacter
 end)
+-- Opens the job/gang wardrobe: shows the room's outfits for `gradeLevel` from `data` alongside
+-- the player's own saved outfits and the character/accessory tabs.
 local function getOutfits(gradeLevel, data)
     local gender = "male"
     if TMGCore.Functions.GetPlayerData().charinfo.gender == 1 then gender = "female" end
@@ -987,18 +1025,28 @@ local function getOutfits(gradeLevel, data)
         })
     end)
 end
+-- Export: open the job/gang wardrobe menu.
 exports('getOutfits',getOutfits)
 -- Events
 
-RegisterNetEvent('onResourceStart', function(resourceName)
+-- Caches PlayerData when this resource restarts.
+-- Fixed:
+-- was RegisterNetEvent('onResourceStart', ...). Resource lifecycle events are raised locally
+-- by the resource manager, so they want AddEventHandler; RegisterNetEvent additionally marked
+-- the name as network-triggerable, which it has no business being. Switched to the explicit
+-- client-side name too. (Plain 'onResourceStart' does fire on the client -- ~20 other client
+-- files here rely on that -- so this is an idiom fix, not a "never ran" fix.)
+AddEventHandler('onClientResourceStart', function(resourceName)
     if (GetCurrentResourceName() ~= resourceName) then return end
     PlayerData = TMGCore.Functions.GetPlayerData()
 end)
 
+-- Re-grabs the core object after tmg-core restarts.
 RegisterNetEvent('TMGCore:Client:UpdateObject', function()
 	TMGCore = exports['tmg-core']:GetCoreObject()
 end)
 
+-- Opens the full appearance editor (features, hair, clothing, accessories) with the default camera.
 RegisterNetEvent('tmg-clothing:client:openMenu', function()
     customCamLocation = nil
     openMenu({
@@ -1008,12 +1056,15 @@ RegisterNetEvent('tmg-clothing:client:openMenu', function()
         {menu = "accessoires", label = Lang:t("menu.accessoires"), selected = false}
     })
 end)
+-- Pushes an updated personal outfit list into the NUI after a save or delete.
 RegisterNetEvent('tmg-clothing:client:reloadOutfits', function(myOutfits)
     SendNUIMessage({
         action = "reloadMyOutfits",
         outfits = myOutfits
     })
 end)
+-- First-time character creation: opens the editor, applies the freemode model matching the
+-- character's gender, and tells the NUI to reset its sliders.
 RegisterNetEvent('tmg-clothes:client:CreateFirstCharacter', function()
     TMGCore.Functions.GetPlayerData(function(pData)
         local skin = "mp_m_freemode_01"
@@ -1035,8 +1086,23 @@ RegisterNetEvent('tmg-clothes:client:CreateFirstCharacter', function()
     end)
 end)
 
+-- Applies a skin pushed from the server: streams the ped model, then hands the decoded skin table
+-- to loadPlayerClothing. The leading argument (first-character flag) is ignored here.
 RegisterNetEvent("tmg-clothes:loadSkin", function(_, model, data)
+    -- Fixed:
+    -- the server fires this with no model/skin when the player has no saved appearance, which
+    -- left `model` as false and spun HasModelLoaded(false) forever. Fall back to the
+    -- gender-appropriate freemode model (same rule as reloadSkin) and only apply clothing when
+    -- the server actually sent a skin.
     model = model ~= nil and tonumber(model) or false
+    if not model then
+        local gender = TMGCore.Functions.GetPlayerData().charinfo.gender
+        if gender == 1 then -- Gender is ONE for FEMALE
+            model = GetHashKey("mp_f_freemode_01") -- Female Model
+        else
+            model = GetHashKey("mp_m_freemode_01") -- Male Model
+        end
+    end
     Citizen.CreateThread(function()
         RequestModel(model)
         while not HasModelLoaded(model) do
@@ -1045,11 +1111,14 @@ RegisterNetEvent("tmg-clothes:loadSkin", function(_, model, data)
         end
         SetPlayerModel(PlayerId(), model)
         SetPedComponentVariation(PlayerPedId(), 0, 0, 0, 2)
+        if not data then return end
         data = json.decode(data)
         TriggerEvent('tmg-clothing:client:loadPlayerClothing', data, PlayerPedId())
     end)
 end)
 
+-- Applies a full skin table to `ped` (defaults to the local ped): clears all components and props
+-- first, then sets face blend, clothing, overlays, props and face morphs. Replaces skinData.
 RegisterNetEvent('tmg-clothing:client:loadPlayerClothing', function(data, ped)
     if ped == nil then ped = PlayerPedId() end
 
@@ -1204,6 +1273,9 @@ RegisterNetEvent('tmg-clothing:client:loadPlayerClothing', function(data, ped)
     SetPedFaceFeature(ped, 19, (data['neck_thikness'].item / 10))
     skinData = data
 end)
+-- Applies a saved outfit on top of the current appearance. Only the slots present in the outfit are
+-- touched, so face/hair are preserved. The tracker metadata forces accessory slot 7 to the ankle monitor.
+-- Nothing is persisted until the player confirms in the menu.
 RegisterNetEvent('tmg-clothing:client:loadOutfit', function(oData)
     local ped = PlayerPedId()
 
@@ -1321,6 +1393,9 @@ RegisterNetEvent('tmg-clothing:client:loadOutfit', function(oData)
         TMGCore.Functions.Notify("You have chosen "..oData.outfitName.."! Press Confirm to confirm outfit.")
     end
 end)
+-- Toggles a worn item on/off with an animation. `type`: 1 hat, 2 glasses, 3 earpiece, 4 mask,
+-- 5 backpack. Stashes the current prop/component into faceProps so it can be restored on the next
+-- toggle. No-op while handcuffed.
 RegisterNetEvent("tmg-clothing:client:adjustfacewear", function(type)
     if TMGCore.Functions.GetPlayerData().metadata["ishandcuffed"] then return end
     removeWear = not removeWear
@@ -1436,18 +1511,22 @@ RegisterNetEvent("tmg-clothing:client:adjustfacewear", function(type)
     end
     ClearPedTasks(PlayerPedId())
 end)
+-- On player load: pull the saved skin from the server, cache PlayerData and build the store zones.
 RegisterNetEvent('TMGCore:Client:OnPlayerLoaded', function()
     TriggerServerEvent("tmg-clothes:loadPlayerSkin")
     PlayerData = TMGCore.Functions.GetPlayerData()
     loadStores()
 --    TMGCore.Shared.Jobs = exports['tmg-jobs']:AddJobs()
 end)
+-- Keeps the cached job in sync (clothing rooms gate on job name and grade).
 RegisterNetEvent('TMGCore:Client:OnJobUpdate', function(JobInfo)
     PlayerData.job = JobInfo
 end)
+-- Keeps the cached gang in sync (gang clothing rooms gate on gang name and grade).
 RegisterNetEvent('TMGCore:Client:OnGangUpdate', function(GangInfo)
     PlayerData.gang = GangInfo
 end)
+-- Opens the personal-outfits-only menu used by outfit changer props.
 RegisterNetEvent('tmg-clothing:client:openOutfitMenu', function()
     TMGCore.Functions.TriggerCallback('tmg-clothing:server:getOutfits', function(result)
         openMenu({
@@ -1457,10 +1536,12 @@ RegisterNetEvent('tmg-clothing:client:openOutfitMenu', function()
 end)
 
 -- Callbacks
+-- NUI picked an outfit from a list; applies it to the ped as a preview.
 RegisterNUICallback('selectOutfit', function(data, cb)
     TriggerEvent('tmg-clothing:client:loadOutfit', data)
     cb('ok')
 end)
+-- Orbits the preview camera 2.5 degrees clockwise around the ped.
 RegisterNUICallback('rotateRight', function(_, cb)
     local ped = PlayerPedId()
     local pedPos = GetEntityCoords(ped)
@@ -1473,6 +1554,7 @@ RegisterNUICallback('rotateRight', function(_, cb)
     PointCamAtCoord(cam, pedPos.x, pedPos.y, camPos.z)
     cb('ok')
 end)
+-- Orbits the preview camera 2.5 degrees anticlockwise around the ped.
 RegisterNUICallback('rotateLeft', function(_, cb)
     local ped = PlayerPedId()
     local pedPos = GetEntityCoords(ped)
@@ -1485,16 +1567,19 @@ RegisterNUICallback('rotateLeft', function(_, cb)
     PointCamAtCoord(cam, pedPos.x, pedPos.y, camPos.z)
     cb('ok')
 end)
+-- NUI reports the player tried to remove a court-ordered ankle monitor.
 RegisterNUICallback('TrackerError', function(_, cb)
     TMGCore.Functions.Notify(Lang:t("notify.error_bracelet"), "error")
     cb('ok')
 end)
+-- Saves the current appearance as a new named outfit.
 RegisterNUICallback('saveOutfit', function(data, cb)
     local ped = PlayerPedId()
     local model = GetEntityModel(ped)
     TriggerServerEvent('tmg-clothes:saveOutfit', data.outfitName, model, skinData)
     cb('ok')
 end)
+-- Turns the ped itself 10 degrees and re-aims the camera at it. `data.type` is 'left' or 'right'.
 RegisterNUICallback('rotateCam', function(data, cb)
     local rotType = data.type
     local ped = PlayerPedId()
@@ -1510,6 +1595,7 @@ RegisterNUICallback('rotateCam', function(data, cb)
     end
     cb('ok')
 end)
+-- Jumps the camera to a preset framing: 1 head, 2 torso, 3 legs, anything else full body.
 RegisterNUICallback('setupCam', function(data, cb)
     local value = data.value
     local pedPos = GetEntityCoords(PlayerPedId())
@@ -1536,12 +1622,15 @@ RegisterNUICallback('setupCam', function(data, cb)
     end
     cb('ok')
 end)
+-- Discards unsaved edits by restoring the skin snapshot taken when the menu opened.
 RegisterNUICallback('resetOutfit', function(_, cb)
     resetClothing(json.decode(previousSkinData))
     skinData = json.decode(previousSkinData)
     previousSkinData = {}
     cb('ok')
 end)
+-- Closes the menu: drops NUI focus, tears down the camera, unfreezes the ped and fires
+-- tmg-clothing:client:onMenuClose for other resources. Does not save.
 RegisterNUICallback('close', function(_, cb)
     SetNuiFocus(false, false)
     creatingCharacter = false
@@ -1550,22 +1639,29 @@ RegisterNUICallback('close', function(_, cb)
     TriggerEvent('tmg-clothing:client:onMenuClose')
     cb('ok')
 end)
+-- Returns the Config.Menus entry for a category so the NUI can build its item list.
 RegisterNUICallback('getCatergoryItems', function(data, cb)
     cb(Config.Menus[data.category])
 end)
-RegisterNUICallback('updateSkin', function(data, cb)
+-- Applies a slider/arrow change from the NUI. The NUI posts to 'updateSkin' for arrows/sliders
+-- and 'updateSkinOnInput' for typed-in values, so both names stay registered.
+-- Fixed:
+-- the two callbacks were byte-identical copies; they now share one implementation.
+local function updateSkinCallback(data, cb)
     ChangeVariation(data)
     cb('ok')
-end)
-RegisterNUICallback('updateSkinOnInput', function(data, cb)
-    ChangeVariation(data)
-    cb('ok')
-end)
+end
+
+RegisterNUICallback('updateSkin', updateSkinCallback)
+RegisterNUICallback('updateSkinOnInput', updateSkinCallback)
+-- Deletes a saved outfit server-side and notifies the player.
 RegisterNUICallback('removeOutfit', function(data, cb)
     TriggerServerEvent('tmg-clothing:server:removeOutfit', data.outfitName, data.outfitId)
     TMGCore.Functions.Notify(Lang:t('notify.info_deleteOutfit', {outfit = data.outfitName}))
     cb('ok')
 end)
+-- Switches the preview ped to the requested model from the gender-appropriate Config list and
+-- returns that model name to the NUI.
 RegisterNUICallback('setCurrentPed', function(data, cb)
     local playerData = TMGCore.Functions.GetPlayerData()
     if playerData.charinfo.gender == 0 then
@@ -1576,17 +1672,21 @@ RegisterNUICallback('setCurrentPed', function(data, cb)
         ChangeToSkinNoUpdate(Config.WomanPlayerModels[data.ped])
     end
 end)
+-- Commits the current appearance to the database as the player's active skin.
 RegisterNUICallback('saveClothing', function(_, cb)
     SaveSkin()
     cb('ok')
 end)
 -- Commands
+-- /refreshskin -- rebuilds the ped from the saved skin, keeping current health. Useful after a
+-- model desync.
 RegisterCommand("refreshskin", function()
     local playerPed = PlayerPedId()
     local health = GetEntityHealth(playerPed)
     reloadSkin(health)
 end)
 -- Threads
+-- Startup: draws map blips for every clothing, barber and surgeon store in Config.Stores.
 Citizen.CreateThread(function()
     for k, _ in pairs (Config.Stores) do
         if Config.Stores[k].shopType == "clothing" then
@@ -1624,6 +1724,8 @@ Citizen.CreateThread(function()
     end
 end)
 -- We define this as function so we don't get a nil value for job. The function triggers when the player is loaded :)
+-- Builds all interaction zones: stores, job/gang clothing rooms and outfit changers. Uses tmg-target
+-- box zones when Config.UseTarget, otherwise PolyZone combos plus an [E] key thread.
 function loadStores()
     if Config.UseTarget then
         CreateThread(function()

@@ -1,3 +1,4 @@
+-- Brazilian Portuguese translation strings for tmg-clothing; active Lang when qb_locale is 'pt-br'.
 local Translations = {
     store = {
         barber = "Barbearia",

@@ -1,6 +1,8 @@
 local TMGCore = exports['tmg-core']:GetCoreObject()
 
 
+-- Persists the player's current appearance as their active skin (upsert on citizenid).
+-- `skin` arrives as a JSON string produced by the client.
 RegisterServerEvent("tmg-clothing:saveSkin", function(model, skin)
     local src = source
     local Player = TMGCore.Functions.GetPlayer(src)
@@ -28,6 +30,8 @@ RegisterServerEvent("tmg-clothing:saveSkin", function(model, skin)
     end
 end)
 
+-- Streams the player's saved active skin back to them. If no document exists, fires loadSkin
+-- with the 'first character' flag so the client starts the creator instead.
 RegisterServerEvent("tmg-clothes:loadPlayerSkin", function()
     local src = source
     local Player = TMGCore.Functions.GetPlayer(src)
@@ -50,6 +54,7 @@ end)
 
 -- [[ TMG MAINFRAME: OUTFIT MANAGEMENT ]]
 
+-- Saves a named outfit under a generated outfitId, then pushes the player's refreshed outfit list.
 RegisterServerEvent("tmg-clothes:saveOutfit", function(outfitName, model, skinData)
     local src = source
     local Player = TMGCore.Functions.GetPlayer(src)
@@ -66,7 +71,11 @@ RegisterServerEvent("tmg-clothes:saveOutfit", function(outfitName, model, skinDa
         outfitId = outfitId
     }
 
-    local insertSuccess = exports['tmgnosql']:UpdateMany('player_outfits', data)
+    -- Fixed:
+    -- was UpdateMany('player_outfits', data), which passed the whole document as the *filter*
+    -- with no update operator, so nothing was ever written. Each save mints a fresh outfitId,
+    -- so this is always a new document -> InsertOne.
+    local insertSuccess = exports['tmgnosql']:InsertOne('player_outfits', data)
     
     if insertSuccess then
         local result = exports['tmgnosql']:Fetch('player_outfits', { 
@@ -82,6 +91,8 @@ RegisterServerEvent("tmg-clothes:saveOutfit", function(outfitName, model, skinDa
     end
 end)
 
+-- Deletes one of the player's outfits by outfitId, then pushes the refreshed outfit list.
+-- `outfitName` is accepted for logging parity but not used in the query.
 RegisterServerEvent("tmg-clothing:server:removeOutfit", function(outfitName, outfitId)
     local src = source
     local Player = TMGCore.Functions.GetPlayer(src)
@@ -110,6 +121,7 @@ end)
 
 -- [[ TMG MAINFRAME: DATA CALLBACKS ]]
 
+-- Returns every player_outfits document belonging to the caller, or an empty table.
 TMGCore.Functions.CreateCallback('tmg-clothing:server:getOutfits', function(source, cb)
     local src = source
     local Player = TMGCore.Functions.GetPlayer(src)

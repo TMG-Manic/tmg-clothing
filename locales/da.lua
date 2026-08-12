@@ -1,3 +1,4 @@
+-- Danish translation strings for tmg-clothing; registered as the active Lang when qb_locale is 'da'.
 local Translations = {
     store = {
         barber = "Frisør",
